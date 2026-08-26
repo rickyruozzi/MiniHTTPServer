@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>LegnoVivo | Tavoli e Sedie</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;700&family=Manrope:wght@400;600;700&display=swap");
+
+      :root {
+        --bg: #f3ecdf;
+        --sand: #ead8bc;
+        --ink: #1e1d1a;
+        --wood: #7a4a2a;
+        --leaf: #335944;
+        --card: #fffaf2;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Manrope", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 20%, rgba(122, 74, 42, 0.18), transparent 34%),
+          radial-gradient(circle at 80% 0%, rgba(51, 89, 68, 0.18), transparent 30%),
+          var(--bg);
+        min-height: 100vh;
+      }
+
+      .shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0 20px;
+      }
+
+      .brand {
+        font-family: "Cormorant Garamond", serif;
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+      }
+
+      .cta {
+        text-decoration: none;
+        background: var(--leaf);
+        color: #fff;
+        padding: 11px 18px;
+        border-radius: 999px;
+        font-weight: 600;
+        transition: transform 220ms ease, box-shadow 220ms ease;
+      }
+
+      .cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(51, 89, 68, 0.28);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 22px;
+        align-items: stretch;
+      }
+
+      .panel {
+        background: linear-gradient(145deg, var(--card), #fff);
+        border-radius: 22px;
+        padding: 34px;
+        box-shadow: 0 16px 40px rgba(74, 44, 23, 0.12);
+        animation: fadeUp 700ms ease both;
+      }
+
+      h1 {
+        font-family: "Cormorant Garamond", serif;
+        font-size: clamp(2rem, 4vw, 3.4rem);
+        line-height: 1.05;
+        margin: 0 0 14px;
+      }
+
+      .lead {
+        color: #47433d;
+        margin: 0 0 24px;
+        max-width: 52ch;
+      }
+
+      .hero-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .ghost {
+        background: transparent;
+        border: 1px solid rgba(30, 29, 26, 0.25);
+        color: var(--ink);
+      }
+
+      .hero-visual {
+        border-radius: 22px;
+        padding: 22px;
+        color: #fff;
+        background:
+          linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.28)),
+          linear-gradient(140deg, #96603a, #4b2f1d 68%);
+        display: grid;
+        align-content: end;
+        min-height: 320px;
+        animation: fadeUp 820ms ease both;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .grid {
+        margin-top: 22px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 18px;
+        border: 1px solid rgba(30, 29, 26, 0.08);
+        animation: fadeUp 980ms ease both;
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-family: "Cormorant Garamond", serif;
+        font-size: 1.5rem;
+      }
+
+      .price {
+        margin: 12px 0 0;
+        font-weight: 700;
+        color: var(--wood);
+      }
+
+      .features {
+        margin-top: 26px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .feature {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(30, 29, 26, 0.08);
+        border-radius: 14px;
+        padding: 14px;
+      }
+
+      .feature strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(18px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 880px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .grid,
+        .features {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <nav class="nav">
+        <div class="brand">LegnoVivo</div>
+        <a class="cta" href="#catalogo">Vedi Catalogo</a>
+      </nav>
+
+      <section class="hero">
+        <article class="panel">
+          <h1>Tavoli e sedie che trasformano la tua casa.</h1>
+          <p class="lead">
+            Collezioni artigianali in legno massello, design contemporaneo e
+            comfort quotidiano. Scegli il set perfetto per cucina, soggiorno e
+            studio.
+          </p>
+          <div class="hero-actions">
+            <a class="cta" href="#catalogo">Acquista ora</a>
+            <a class="cta ghost" href="#servizi">Scopri i servizi</a>
+          </div>
+        </article>
+
+        <aside class="hero-visual">
+          <p>Nuova collezione 2026</p>
+          <h2 style="margin: 8px 0 0; font-family: 'Cormorant Garamond', serif; font-size: 2rem;">Linea Rovere Vivo</h2>
+        </aside>
+      </section>
+
+      <section id="catalogo" class="grid">
+        <article class="card">
+          <h3>Tavolo Oslo</h3>
+          <p>6 posti, rovere naturale, finitura opaca resistente.</p>
+          <p class="price">Da EUR 589</p>
+        </article>
+        <article class="card">
+          <h3>Sedia Nido</h3>
+          <p>Scocca ergonomica, seduta imbottita, 8 varianti colore.</p>
+          <p class="price">Da EUR 99</p>
+        </article>
+        <article class="card">
+          <h3>Set Convivio</h3>
+          <p>Tavolo allungabile + 4 sedie coordinate per piccoli spazi.</p>
+          <p class="price">Da EUR 899</p>
+        </article>
+      </section>
+
+      <section id="servizi" class="features">
+        <article class="feature">
+          <strong>Consegna Premium</strong>
+          Montaggio in casa e ritiro imballaggi in tutta Italia.
+        </article>
+        <article class="feature">
+          <strong>Materiali Certificati</strong>
+          Legno da foreste gestite responsabilmente e vernici ad acqua.
+        </article>
+        <article class="feature">
+          <strong>Pagamento Flessibile</strong>
+          3 rate senza interessi sui set tavolo + sedie selezionati.
+        </article>
+      </section>
+    </div>
+  </body>
+</html>
