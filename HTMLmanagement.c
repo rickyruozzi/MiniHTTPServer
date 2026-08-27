@@ -405,7 +405,7 @@ int html_render_homepage_with_products(char *output_html, size_t output_html_siz
 	return 0;
 }
 
-void handle_create_product(int client_fd, request_t *request) {
+void handle_create_product(HTTPserver_t *server, int client_fd, request_t *request) {
 #ifdef HAVE_MYSQL_CAPI
     MYSQL *conn = NULL;
     MYSQL_STMT *stmt = NULL;
@@ -438,39 +438,39 @@ void handle_create_product(int client_fd, request_t *request) {
     if(port_str == NULL || port_str[0] == '\0') port_str = "3306";
 
     if (request == NULL || request->body[0] == '\0') {
-        http_send_error_response(client_fd, HTTP_STATUS_BAD_REQUEST, "Body empty");
+        http_send_error_response(server, client_fd, HTTP_STATUS_BAD_REQUEST, "Body empty");
         return;
     }
 
     if (extract_json_string_value(request->body, "name", name, sizeof(name)) != 0 ||
         extract_json_string_value(request->body, "description", description, sizeof(description)) != 0 ||
         extract_json_double_value(request->body, "price", &price) != 0) {
-        http_send_error_response(client_fd, HTTP_STATUS_BAD_REQUEST, "Invalid JSON payload");
+        http_send_error_response(server, client_fd, HTTP_STATUS_BAD_REQUEST, "Invalid JSON payload");
         return;
     }
 
     conn = mysql_init(NULL);
     if (conn == NULL) {
-        http_send_error_response(client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL initialization failed");
+        http_send_error_response(server, client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL initialization failed");
         return;
     }
 
     if (mysql_real_connect(conn, host, user, password, database, port, NULL, 0) == NULL) {
-        http_send_error_response(client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL connection failed");
+        http_send_error_response(server, client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL connection failed");
         mysql_close(conn);
         return;
     }
 
     stmt = mysql_stmt_init(conn);
     if (stmt == NULL) {
-        http_send_error_response(client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL statement init failed");
+        http_send_error_response(server, client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL statement init failed");
         mysql_close(conn);
         return;
     }
 
     const char *insert_query = "INSERT INTO products (name, description, price) VALUES (?, ?, ?)";
     if (mysql_stmt_prepare(stmt, insert_query, strlen(insert_query)) != 0) {
-        http_send_error_response(client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL statement prepare failed");
+        http_send_error_response(server, client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL statement prepare failed");
         mysql_stmt_close(stmt);
         mysql_close(conn);
         return;
@@ -498,14 +498,14 @@ void handle_create_product(int client_fd, request_t *request) {
     bind[2].buffer_length = sizeof(price);
 
     if (mysql_stmt_bind_param(stmt, bind) != 0) {
-        http_send_error_response(client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "bind failed");
+        http_send_error_response(server, client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "bind failed");
         mysql_stmt_close(stmt);
         mysql_close(conn);
         return;
     }
 
     if (mysql_stmt_execute(stmt) != 0) {
-        http_send_error_response(client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "insert failed");
+        http_send_error_response(server, client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "insert failed");
         mysql_stmt_close(stmt);
         mysql_close(conn);
         return;
@@ -514,9 +514,9 @@ void handle_create_product(int client_fd, request_t *request) {
     mysql_stmt_close(stmt);
     mysql_close(conn);
 
-    http_send_json_response(client_fd, "{\"status\":\"ok\",\"message\":\"Product created successfully\"}");
+    http_send_json_response(server, client_fd, "{\"status\":\"ok\",\"message\":\"Product created successfully\"}");
 #else
-    http_send_error_response(client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL Connector/C not available");
+    http_send_error_response(server, client_fd, HTTP_STATUS_INTERNAL_SERVER_ERROR, "MySQL Connector/C not available");
     return;
 #endif
 }

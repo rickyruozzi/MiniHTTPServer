@@ -18,10 +18,10 @@ typedef struct {
 
 void http_response_init(response_t *res);
 void http_response_free(response_t *res);
-void http_send_response(int client_fd, const response_t *resp);
-void http_send_html_response(int client_fd, const char *html_content);
-void http_send_json_response(int client_fd, const char *json_content);
-void http_send_error_response(int client_fd, int status_code, const char *error_message);
-void http_send_redirect_response(int client_fd, const char *location);
+void http_send_response(HTTPserver_t *server, int client_fd, const response_t *resp);
+void http_send_html_response(HTTPserver_t *server, int client_fd, const char *html_content);
+void http_send_json_response(HTTPserver_t *server, int client_fd, const char *json_content);
+void http_send_error_response(HTTPserver_t *server, int client_fd, int status_code, const char *error_message);
+void http_send_redirect_response(HTTPserver_t *server, int client_fd, const char *location);
 
 #endif // RESPONSE_H

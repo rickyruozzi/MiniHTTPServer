@@ -37,6 +37,10 @@
 #endif
 
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
+
 typedef struct BanList{
     char ip_address[16];
     struct BanList* next;
@@ -47,6 +51,7 @@ typedef struct {
     struct sockaddr_in server_addr; 
     uint16_t port;
     BanList* head;
+    SSL_CTX *ssl_context;
 } HTTPserver_t;
 
 typedef struct {
@@ -101,7 +106,7 @@ enum HTTPstatus_code {
 
 HTTPserver_t *http_server_init(uint16_t port);
 void http_accept_client(HTTPserver_t *server, HTTPclient_t *client);
-void http_handle_connection(int client_fd);
+void http_handle_connection(HTTPserver_t *server, int client_fd);
 void resolve_get_path(const char *path, char *file_path, size_t file_path_size);
 
 
@@ -109,10 +114,10 @@ void ban_ip(HTTPserver_t *server, const char *ip_address);
 void unban_ip(HTTPserver_t *server, const char *ip_address);
 
 void parse_http_request(const char *raw, request_t *request);
-void handle_request(int client_fd, request_t *request);
-void handle_get_request(int client_fd, request_t *request);
-void handle_post_request(int client_fd, request_t *request);
+void handle_request(HTTPserver_t *server, int client_fd, request_t *request);
+void handle_get_request(HTTPserver_t *server, int client_fd, request_t *request);
+void handle_post_request(HTTPserver_t *server, int client_fd, request_t *request);
 int create_server_socket(int port);
 int read_html_file(const char *file_path, char *buffer, size_t buffer_size);
-void handle_create_product(int client_fd, request_t *request);
+void handle_create_product(HTTPserver_t *server, int client_fd, request_t *request);
 #endif

@@ -17,11 +17,11 @@ MYSQL_WIN_LIB = "$(MYSQL_WIN_LIB_DIR)/libmysql.lib"
 
 # --- Linux ---
 LINUX_CFLAGS = $(CFLAGS) -I/usr/include/mysql
-LINUX_LIBS = -lpthread -L/usr/lib/x86_64-linux-gnu -lmysqlclient
+LINUX_LIBS = -lpthread -L/usr/lib/x86_64-linux-gnu -lmysqlclient -lssl -lcrypto
 
 # --- Windows / MinGW ---
-WINDOWS_CFLAGS = $(CFLAGS) -D_WIN32 -I"$(MYSQL_WIN_INC)"
-WINDOWS_LIBS = -lws2_32 $(MYSQL_WIN_LIB)
+WINDOWS_CFLAGS = $(CFLAGS) -D_WIN32 -I"$(MYSQL_WIN_INC)" 
+WINDOWS_LIBS = -lws2_32 $(MYSQL_WIN_LIB) -lssl -lcrypto
 
 # Target default
 all: windows

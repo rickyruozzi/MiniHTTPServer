@@ -28,6 +28,29 @@ static int is_ip_banned(uint32_t addr, HTTPserver_t *server) {
 #define CLOSE_SOCKET(s) close(s)
 #endif
 
+void init_ssl_context(HTTPserver_t *server){
+    SSL_library_init(); //initializing the SSL library
+    SSL_load_error_strings(); //loading the error strings for SSL
+    OPENSSL_add_all_algorithms_conf(); //loading all the algorithms for SSL
+    server->ssl_context = SSL_CTX_new(TLS_server_method()); //creating a new SSL context
+    if(server->ssl_context == NULL){
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    if(SSL_CTX_use_certificate_file(server->ssl_context, "certificate.crt", SSL_FILETYPE_PEM) <= 0){
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    } //setting certificate file for the context
+    if(SSL_CTX_use_PrivateKey_file(server->ssl_context, "private.key", SSL_FILETYPE_PEM) <= 0){
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    } //setting the private key for the context
+    if (!SSL_CTX_check_private_key(server->ssl_context)) {
+        fprintf(stderr, "Certificate and private key do not match\n");
+        exit(EXIT_FAILURE);
+    } //checking if the certificate and private key match
+}
+
 HTTPserver_t *http_server_init(uint16_t port){
     HTTPserver_t *server = malloc(sizeof(HTTPserver_t));
     if (!server) {
@@ -41,6 +64,7 @@ HTTPserver_t *http_server_init(uint16_t port){
     server->server_addr.sin_port = htons(port);
     server->head = NULL;
     server->server_socket = create_server_socket(port);
+    init_ssl_context(server); // Initialize SSL context
     return server;
 }
 
@@ -78,7 +102,7 @@ void http_response_free(response_t *res){
 }
 
 //function insert the structure fields on a buffer and return the buffer
-void http_send_response(int client_fd, const response_t *resp) {
+void http_send_response(HTTPserver_t *server, int client_fd, const response_t *resp) {
     char header[1024];
     int header_len;
     header_len = snprintf(
@@ -91,12 +115,24 @@ void http_send_response(int client_fd, const response_t *resp) {
         resp->content_type,
         resp->body_len
     );
-    send(client_fd, header, header_len, 0);
-    send(client_fd, resp->body, resp->body_len, 0);
+    SSL *ssl = SSL_new(server->ssl_context);
+    SSL_set_fd(ssl, client_fd);
+    if(SSL_accept(ssl) <= 0){
+        ERR_print_errors_fp(stderr);
+        SSL_free(ssl);
+        CLOSE_SOCKET(client_fd); //error occured, closing client socket and ssl connection
+        return;
+    }
+
+    SSL_write(ssl, header, header_len);
+    SSL_write(ssl, resp->body, resp->body_len);
+    SSL_free(ssl);
+    SSL_shutdown(ssl);
+    CLOSE_SOCKET(client_fd);
 }
 
 //setting the response as a json response
-void http_send_json_response(int client_fd, const char *json_content){
+void http_send_json_response(HTTPserver_t *server, int client_fd, const char *json_content){
     response_t *response; 
     response = malloc(sizeof(response_t));
     http_response_init(response); //initialize the response structure
@@ -104,12 +140,12 @@ void http_send_json_response(int client_fd, const char *json_content){
     snprintf(response->body, sizeof(response->body), "%s", json_content != NULL ? json_content : "{}");
     response->body_len = strlen(response->body);
     strncpy(response->content_type, "application/json", sizeof(response->content_type) - 1);
-    http_send_response(client_fd, response);
+    http_send_response(server, client_fd, response);
     http_response_free(response); //free the response structure
 }
 
 //setting the response as a html response
-void http_send_html_response(int client_fd, const char *html_content){
+void http_send_html_response(HTTPserver_t *server, int client_fd, const char *html_content){
     response_t *response; 
     response = malloc(sizeof(response_t));
     http_response_init(response); //initialize the response structure
@@ -117,12 +153,12 @@ void http_send_html_response(int client_fd, const char *html_content){
     snprintf(response->body, sizeof(response->body), "%s", html_content != NULL ? html_content : "");
     response->body_len = strlen(response->body);
     strncpy(response->content_type, "text/html", sizeof(response->content_type) - 1);
-    http_send_response(client_fd, response);
+    http_send_response(server, client_fd, response);
     http_response_free(response);
 }
 
 //setting the response as a error response
-void http_send_error_response(int client_fd, int status_code, const char *error_message){
+void http_send_error_response(HTTPserver_t *server, int client_fd, int status_code, const char *error_message){
     response_t *response; 
     response = malloc(sizeof(response_t));
     http_response_init(response); //initialize the response structure
@@ -130,12 +166,12 @@ void http_send_error_response(int client_fd, int status_code, const char *error_
     snprintf(response->body, sizeof(response->body), "%s", error_message != NULL ? error_message : "Error");
     response->body_len = strlen(response->body);
     strncpy(response->content_type, "text/plain", sizeof(response->content_type) - 1);
-    http_send_response(client_fd, response);
+    http_send_response(server, client_fd, response);
     http_response_free(response);
 }
 
 //setting the response as a redirect response
-void http_send_redirect_response(int client_fd, const char *location){
+void http_send_redirect_response(HTTPserver_t *server, int client_fd, const char *location){
     response_t *response; 
     response = malloc(sizeof(response_t));
     http_response_init(response); //initialize the response structure
@@ -143,7 +179,7 @@ void http_send_redirect_response(int client_fd, const char *location){
     snprintf(response->headers, sizeof(response->headers), "Location: %s\r\n", location);
     response->body_len = 0;
     strncpy(response->content_type, "text/plain", sizeof(response->content_type) - 1);
-    http_send_response(client_fd, response);
+    http_send_response(server, client_fd, response);
     http_response_free(response);
 }
 
@@ -167,33 +203,44 @@ void http_accept_client(HTTPserver_t *server, HTTPclient_t *client){
         return;
     }
 
-    http_handle_connection(client->client_socket);
+    http_handle_connection(server, client->client_socket);
 }
 
-void http_handle_connection(int client_fd){
+void http_handle_connection(HTTPserver_t *server, int client_fd){
     char buffer[4096];
-    ssize_t received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+    SSL *ssl = SSL_new(server->ssl_context);
+    SSL_set_fd(ssl, client_fd);
+    if(SSL_accept(ssl) <=0){
+        ERR_print_errors_fp(stderr);
+        SSL_free(ssl);
+        CLOSE_SOCKET(client_fd); //error occured, closing client socket and ssl connection
+        return;
+    }
+    ssize_t received = SSL_read(ssl, buffer, sizeof(buffer) - 1); //read using ssl
     if (received <= 0) {
         CLOSE_SOCKET(client_fd);
+        SSL_free(ssl);
         return;
     }
     buffer[received] = '\0';
     request_t request;
     parse_http_request(buffer, &request);
-    handle_request(client_fd, &request);
+    handle_request(server, client_fd, &request);
+    SSL_free(ssl);
+    SSL_shutdown(ssl);
     CLOSE_SOCKET(client_fd);
 }
 
-void handle_request(int client_fd, request_t *request){
+void handle_request(HTTPserver_t *server, int client_fd, request_t *request){
     if (strcmp(request->method, "GET") == 0) {
-        handle_get_request(client_fd, request);
+        handle_get_request(server, client_fd, request);
         return;
     }
     if (strcmp(request->method, "POST") == 0) {
-        handle_post_request(client_fd, request);
+        handle_post_request(server, client_fd, request);
         return;
     }
-    http_send_error_response(client_fd, HTTP_STATUS_BAD_REQUEST, "Unsupported HTTP method");
+    http_send_error_response(server, client_fd, HTTP_STATUS_BAD_REQUEST, "Unsupported HTTP method");
 }
 
 int create_server_socket(int port) {
@@ -246,13 +293,13 @@ void parse_http_request(const char *raw, request_t *request){
     }
 }
 
-void handle_get_request(int client_fd, request_t *request){
+void handle_get_request(HTTPserver_t *server, int client_fd, request_t *request){
     char file_path[256] = {0};
     char html_content[HTTP_RESPONSE_BODY_MAX] = {0};
 
     if (strcmp(request->path, "/") == 0) {
         if (html_render_homepage_with_products(html_content, sizeof(html_content)) == 0) {
-            http_send_html_response(client_fd, html_content);
+            http_send_html_response(server, client_fd, html_content);
             return;
         }
     }
@@ -260,15 +307,15 @@ void handle_get_request(int client_fd, request_t *request){
     resolve_get_path(request->path, file_path, sizeof(file_path));
 
     if (read_html_file(file_path, html_content, sizeof(html_content)) == 0) {
-        http_send_html_response(client_fd, html_content);
+        http_send_html_response(server, client_fd, html_content);
         return;
     }
 
     if (strcmp(file_path, TEMPLATE_DIR "/404.html") != 0 &&
         read_html_file(TEMPLATE_DIR "/404.html", html_content, sizeof(html_content)) == 0) {
-        http_send_html_response(client_fd, html_content);
+        http_send_html_response(server, client_fd, html_content);
     } else {
-        http_send_error_response(client_fd, HTTP_STATUS_NOT_FOUND, "404 Not Found");
+        http_send_error_response(server, client_fd, HTTP_STATUS_NOT_FOUND, "404 Not Found");
     }
 }
 
@@ -296,13 +343,13 @@ int read_html_file(const char *file_path, char *buffer, size_t buffer_size) {
     return 0;
 }
 
-void handle_post_request(int client_fd, request_t *request) {
+void handle_post_request(HTTPserver_t *server, int client_fd, request_t *request) {
     if(strcmp(request->path, "/products")==0){
-        handle_create_product(client_fd, request);
+        handle_create_product(server, client_fd, request);
         return;
     }
     else{
-        http_send_error_response(client_fd, HTTP_STATUS_BAD_REQUEST, "Invalid endpoint");
+        http_send_error_response(server, client_fd, HTTP_STATUS_BAD_REQUEST, "Invalid endpoint");
         return;
     }
     response_t response;
@@ -318,7 +365,7 @@ void handle_post_request(int client_fd, request_t *request) {
     response.body_len = strlen(response.body);
     snprintf(response.content_type, sizeof(response.content_type), "application/json");
 
-    http_send_response(client_fd, &response);
+    http_send_response(server, client_fd, &response);
 }
 
 void resolve_get_path(const char *path, char *file_path, size_t file_path_size) {
